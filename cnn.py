@@ -130,8 +130,11 @@ class VGG19_CNN(object):
             print dim
             for i in range(100):
                 train.run()
+
+                # Every time we train, create a new image to see the updates
                 scipy.misc.imsave('newfile2.jpg', x.eval())
 
+            # This will be the final image
             scipy.misc.imsave('newfile2.jpg', x.eval())
 
 
