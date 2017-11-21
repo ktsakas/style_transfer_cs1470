@@ -28,7 +28,8 @@ if __name__ == "__main__":
     vgg19_network = VGG19_CNN(VGG_PATH)
 
 
-    vgg19_network.extractFeatureFromLayer(content_img, "conv1_1")
+    # vgg19_network.extractFeatureFromLayer(content_img, "conv1_1")
+    vgg19_network.reconstruct_content_from_layer(content_img, "conv1_1")
 
     # Reference code to convert to grayscale
     # g = tf.image.rgb_to_grayscale(content_img)
