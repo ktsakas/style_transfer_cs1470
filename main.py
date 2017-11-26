@@ -7,7 +7,7 @@ import imageio
 from cnn import *
 
 # Change this value to the path of wherever your VGG-19 CNN is
-VGG_PATH = '../sample_capstone/style-transfer-master/imagenet-vgg-verydeep-19.mat'
+VGG_PATH = './imagenet-vgg-verydeep-19.mat'
 
 def imread(path):
     return imageio.imread(path).astype(np.float)
@@ -26,4 +26,4 @@ if __name__ == "__main__":
     vgg19_network = VGG19_CNN(VGG_PATH)
 
 
-    vgg19_network.reconstruct_content_from_layer(vgg19_network.preprocess(content_img), "conv1_1")
+    vgg19_network.reconstruct_content_from_layer(vgg19_network.preprocess(content_img), "conv2_1")

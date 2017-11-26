@@ -87,7 +87,7 @@ class VGG19_CNN(object):
         elif l == "conv5_4":
             return 34
         else:
-            print "Error: No such convolutional layer named: " + l
+            print("Error: No such convolutional layer named: " + l)
             return -1
 
     def getFiltersFromLayer(self, l):
@@ -145,12 +145,10 @@ class VGG19_CNN(object):
 
         # P (NxM) contains the features of the random noise image in layer l
         P = feature_maps_original[l]
-        P = tf.reshape(P, [P.get_shape().as_list()[1], P.get_shape().as_list()[2], P.get_shape().as_list()[3]])
 
         # F (NxM) contains the features of the image in layer l
         # We use F to construct an image similar in content from a random noise image
         F = feature_maps_noise[l]
-        F = tf.reshape(F, [F.get_shape().as_list()[1], F.get_shape().as_list()[2], F.get_shape().as_list()[3]])
 
         # Content Loss
         content_loss = tf.nn.l2_loss(F-P)
@@ -163,7 +161,7 @@ class VGG19_CNN(object):
             sess.run(tf.global_variables_initializer())
             for i in range(100):
                 train.run()
-                print i
+                print(i)
                 scipy.misc.imsave('subtractPixel.jpg', x.eval() + self.mean_pixel)
 
 
@@ -171,4 +169,4 @@ class VGG19_CNN(object):
 
 
 
-        print "Finished"
+        print("Finished")
