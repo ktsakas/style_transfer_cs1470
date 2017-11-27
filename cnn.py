@@ -2,7 +2,7 @@ import tensorflow as tf
 import scipy.io
 import scipy.misc
 import numpy as np
-import png
+import imageio
 
 class VGG19_CNN(object):
 
@@ -140,7 +140,7 @@ class VGG19_CNN(object):
 
         # We are performing convolution on x and in Tensorflow
         # tf.nn.conv2d takes in input as [batchSz, height, width, num_channels]
-        x = tf.Variable(tf.random_normal(image.shape, stddev=.1))
+        x = tf.Variable(tf.random_normal(image.shape))
         feature_maps_noise = self.convolve(x)
 
         # P (NxM) contains the features of the random noise image in layer l
@@ -159,10 +159,11 @@ class VGG19_CNN(object):
 
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
-            for i in range(100):
-                train.run()
-                print(i)
-                scipy.misc.imsave('subtractPixel.jpg', x.eval() + self.mean_pixel)
+            for i in range(500):
+                _, outF, loss = sess.run([train, F, content_loss])
+                print(i, 2 * loss / outF.size)
+                print(x.eval().shape, self.mean_pixel.shape)
+                scipy.misc.imsave('subtractPixel.jpg', x.eval() - self.mean_pixel)
 
 
             scipy.misc.imsave('newfile2.jpg', x.eval())
