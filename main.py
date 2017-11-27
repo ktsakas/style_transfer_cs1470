@@ -26,4 +26,4 @@ if __name__ == "__main__":
     vgg19_network = VGG19_CNN(VGG_PATH)
 
 
-    vgg19_network.reconstruct_content_from_layer(vgg19_network.preprocess(content_img), "conv2_1")
+    vgg19_network.reconstruct_content_from_layer(content_img, "conv2_1")
