@@ -23,7 +23,7 @@ if __name__ == "__main__":
     style_img = load_image(sys.argv[2])
 
 
-    vgg19_network = VGG19_CNN(VGG_PATH)
+    vgg19_network = VGG19_CNN(VGG_PATH, content_img, style_img)
 
 
-    vgg19_network.reconstruct_content_from_layer(content_img, "conv2_1")
+    vgg19_network.reconstruct_content_from_layer("relu4_2")
