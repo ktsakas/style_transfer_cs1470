@@ -4,11 +4,11 @@ import scipy.misc
 import numpy as np
 import imageio
 
-CONTENT_W = 1
-STYLE_W = 100
+CONTENT_W = 50
+STYLE_W = 1000
 STYLING_LAYERS = ['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1']
 
-class VGG19_CNN(object):
+class VGG19_CNN():
 
     architecture = [
         "conv1_1",
@@ -133,6 +133,9 @@ class VGG19_CNN(object):
         image_feature = tf.reshape(image_feature, (-1, number))
         return tf.matmul(tf.transpose(image_feature), image_feature) / size
 
+    def imsave(self, path, img):
+        img = np.clip(img, 0, 255).astype(np.uint8)
+        scipy.misc.imsave(path, img)
 
     def reconstruct_content_from_layer(self, l):
         print("Reconstructing at: " + l)
@@ -164,15 +167,15 @@ class VGG19_CNN(object):
             tf.summary.FileWriter('./train', sess.graph)
 
             sess.run(tf.global_variables_initializer())
-            for i in range(150):
+            for i in range(200):
                 train.run()
                 print(i, total_loss.eval(), content_loss.eval(), style_loss.eval())
                 # print(x.eval().shape, self.mean_pixel.shape)
                 t = self.image.eval() + self.mean_pixel
-                scipy.misc.imsave('subtractPixel.jpg', t)
+                self.imsave('subtractPixel.jpg', t)
 
 
-            scipy.misc.imsave('newfile2.jpg', self.image.eval())
+            self.imsave('newfile2.jpg', self.image.eval())
 
 
 
