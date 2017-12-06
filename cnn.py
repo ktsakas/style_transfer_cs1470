@@ -3,9 +3,12 @@ import scipy.io
 import scipy.misc
 import numpy as np
 import imageio
+import os
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 CONTENT_W = 1
-STYLE_W = 10
+STYLE_W = 100
 LEARNING_RATE = 10
 STYLING_LAYERS = ['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1']
 
@@ -134,10 +137,6 @@ class VGG19_CNN():
         image_feature = tf.reshape(image_feature, (-1, number))
         return tf.matmul(tf.transpose(image_feature), image_feature) / size
 
-    def imsave(self, path, img):
-        img = np.clip(img, 0, 255).astype(np.uint8)
-        scipy.misc.imsave(path, img)
-
     def reconstruct_content_from_layer(self, l):
         print("Reconstructing at: " + l)
         content_image = tf.placeholder('float', shape=self.content.shape)
@@ -146,8 +145,6 @@ class VGG19_CNN():
         # We are performing convolution on x and in Tensorflow
         # tf.nn.conv2d takes in input as [batchSz, height, width, num_channels]
         feature_maps_noise = self.convolve(self.image)
-        scipy.misc.imsave('start.jpg', self.preprocess(self.content))
-
         with tf.Session() as sess:
             # P (NxM) contains the features of the random noise image in layer l
             P = feature_maps_original[l].eval(feed_dict = {content_image: self.preprocess(self.content)})
@@ -170,15 +167,8 @@ class VGG19_CNN():
             sess.run(tf.global_variables_initializer())
             for i in range(200):
                 train.run()
-                print(i, total_loss.eval(), content_loss.eval(), style_loss.eval())
+                print("Iteration: %d -- (style loss) %d + (content loss) %d = %d" % (i, style_loss.eval(), content_loss.eval(), total_loss.eval()))
                 # print(x.eval().shape, self.mean_pixel.shape)
                 t = self.image.eval() + self.mean_pixel
-                self.imsave('./output/live-training.jpg', t)
-
-
-            self.imsave('newfile2.jpg', self.image.eval() + self.mean_pixel)
-
-
-
-        print("Finished")
+                yield t
 
