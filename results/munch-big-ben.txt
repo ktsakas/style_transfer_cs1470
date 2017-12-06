@@ -1,0 +1,3 @@
+Learning rate: 10
+Content weight: 1
+Style weight: 10
