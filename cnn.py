@@ -70,13 +70,12 @@ class VGG19_CNN():
         self.artwork = artwork
         self.image = tf.Variable(tf.random_normal(self.content.shape))
         self.vgg_net = self.convolve(self.image)
-        print(self.mean_pixel)
 
     def preprocess(self, image):
         return (image - self.mean_pixel).astype(np.float32)
 
     def getFiltersFromLayer(self, l):
-        kernels, bias = self.layers[architecture.index(l)][0][0][0][0]
+        kernels, bias = self.layers[VGG19_CNN.architecture.index(l)-1][0][0][0][0]
         return kernels
 
 
@@ -115,30 +114,31 @@ class VGG19_CNN():
         style_input = tf.placeholder('float', shape=self.artwork.shape)
         style_feature_maps = self.convolve(style_input)
 
+        avg_w = 1 / len(STYLING_LAYERS)
         with tf.Session() as sess:
             loss = 0
             for layer in STYLING_LAYERS:
+                style_feature = self.vgg_net[layer]
+                _, height, width, number = style_feature.get_shape().as_list()
+                size = height * width * number
                 style_gram_matrix = self.compute_gram_matrix(style_feature_maps, style_input, layer)
-                input_gram_matrix = self.compute_gram_matrix_for_layer(layer)
+                input_gram_matrix = self.compute_gram_matrix_for_layer(style_feature)
 
-                loss += STYLE_W * (2 * tf.nn.l2_loss(input_gram_matrix - style_gram_matrix) / style_gram_matrix.size)
+                loss += avg_w * (tf.nn.l2_loss(input_gram_matrix - style_gram_matrix) / (style_gram_matrix.size * (size ** 2)))
 
-        return loss
+        return STYLE_W * loss
 
     def compute_gram_matrix(self, style_net, artwork_placeholder, layer):
         image_feature = style_net[layer].eval(feed_dict={artwork_placeholder: self.preprocess(self.artwork)})
         image_feature = np.reshape(image_feature, (-1, image_feature.shape[3]))
-        return np.matmul(image_feature.T, image_feature) / image_feature.size
+        return np.matmul(image_feature.T, image_feature)
 
-    def compute_gram_matrix_for_layer(self, layer):
-        image_feature = self.vgg_net[layer]
-        _, height, width, number = map(lambda i: i.value, image_feature.get_shape())
-        size = height * width * number
+    def compute_gram_matrix_for_layer(self, image_feature):
+        number = image_feature.get_shape()[3]
         image_feature = tf.reshape(image_feature, (-1, number))
-        return tf.matmul(tf.transpose(image_feature), image_feature) / size
+        return tf.matmul(tf.transpose(image_feature), image_feature)
 
     def reconstruct_content_from_layer(self, l):
-        print("Reconstructing at: " + l)
         content_image = tf.placeholder('float', shape=self.content.shape)
         feature_maps_original = self.convolve(content_image)
 
@@ -154,7 +154,7 @@ class VGG19_CNN():
             F = feature_maps_noise[l]
 
             # Content Loss
-            content_loss = CONTENT_W * (2 * tf.nn.l2_loss(F-P) / P.size)
+            content_loss = CONTENT_W * (tf.nn.l2_loss(F-P) / P.size)
 
             style_loss = self.style_loss()
 
