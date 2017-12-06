@@ -4,9 +4,19 @@ import scipy.misc
 import numpy as np
 import imageio
 
-CONTENT_W = 50
-STYLE_W = 1000
+CONTENT_W = 1
+STYLE_W = 10
+LEARNING_RATE = 10
 STYLING_LAYERS = ['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1']
+
+class STYLE_LOSS():
+    def setupNetwork(self):
+        pass
+
+
+class CONTENT_LOSS():
+    def setupNetwork(self):
+        pass
 
 class VGG19_CNN():
 
@@ -62,17 +72,8 @@ class VGG19_CNN():
     def preprocess(self, image):
         return (image - self.mean_pixel).astype(np.float32)
 
-    def convertConvolutionalLayerToIndex(self, l):
-        """
-            Given the name of a convolutional layer in VGG-19, return the corresponding index
-            in the pre-trained matconvnet CNN.
-                @param l    Name of a convolutional layer in VGG-19.
-                @return i   The corresponding index in the pre-trained matconvnet CNN.
-        """
-        return architecture.index(l)
-
     def getFiltersFromLayer(self, l):
-        kernels, bias = self.layers[self.convertConvolutionalLayerToIndex(l)][0][0][0][0]
+        kernels, bias = self.layers[architecture.index(l)][0][0][0][0]
         return kernels
 
 
@@ -163,7 +164,7 @@ class VGG19_CNN():
             total_loss = content_loss + style_loss
 
             # Training Step
-            train = tf.train.AdamOptimizer(10).minimize(total_loss)
+            train = tf.train.AdamOptimizer(LEARNING_RATE).minimize(total_loss)
             tf.summary.FileWriter('./train', sess.graph)
 
             sess.run(tf.global_variables_initializer())
@@ -172,10 +173,10 @@ class VGG19_CNN():
                 print(i, total_loss.eval(), content_loss.eval(), style_loss.eval())
                 # print(x.eval().shape, self.mean_pixel.shape)
                 t = self.image.eval() + self.mean_pixel
-                self.imsave('subtractPixel.jpg', t)
+                self.imsave('./output/live-training.jpg', t)
 
 
-            self.imsave('newfile2.jpg', self.image.eval())
+            self.imsave('newfile2.jpg', self.image.eval() + self.mean_pixel)
 
 
 
