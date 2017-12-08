@@ -10,16 +10,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 CONTENT_W = 1
 STYLE_W = 100
 LEARNING_RATE = 10
+ITERATIONS = 200
 STYLING_LAYERS = ['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1']
-
-class STYLE_LOSS():
-    def setupNetwork(self):
-        pass
-
-
-class CONTENT_LOSS():
-    def setupNetwork(self):
-        pass
 
 class VGG19_CNN():
 
@@ -73,11 +65,6 @@ class VGG19_CNN():
 
     def preprocess(self, image):
         return (image - self.mean_pixel).astype(np.float32)
-
-    def getFiltersFromLayer(self, l):
-        kernels, bias = self.layers[VGG19_CNN.architecture.index(l)-1][0][0][0][0]
-        return kernels
-
 
     def convolve(self, image):
         """
@@ -165,7 +152,7 @@ class VGG19_CNN():
             tf.summary.FileWriter('./train', sess.graph)
 
             sess.run(tf.global_variables_initializer())
-            for i in range(200):
+            for i in range(ITERATIONS):
                 train.run()
                 print("Iteration: %d -- (style loss) %d + (content loss) %d = %d" % (i, style_loss.eval(), content_loss.eval(), total_loss.eval()))
                 # print(x.eval().shape, self.mean_pixel.shape)
