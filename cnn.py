@@ -3,10 +3,23 @@ import scipy.io
 import scipy.misc
 import numpy as np
 import imageio
+import os
 
-CONTENT_W = 50
-STYLE_W = 1000
-STYLING_LAYERS = ['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1']
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+CONTENT_W = 1
+STYLE_W = 10000
+LEARNING_RATE = 10
+STYLING_LAYERS = ['conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1']
+
+class STYLE_LOSS():
+    def setupNetwork(self):
+        pass
+
+
+class CONTENT_LOSS():
+    def setupNetwork(self):
+        pass
 
 class VGG19_CNN():
 
@@ -52,27 +65,17 @@ class VGG19_CNN():
     def __init__(self, path, content, artwork):
         self.network = scipy.io.loadmat(path)
         self.layers = self.network["layers"][0]
-        self.mean_pixel = np.mean(self.network['normalization'][0][0][0], axis=(0, 1))
+        self.normalization = np.mean(self.network['normalization'][0][0][0], axis=(0, 1))
         self.content = content
         self.artwork = artwork
-        self.image = tf.Variable(tf.random_normal(self.content.shape))
+        self.image = tf.Variable(tf.convert_to_tensor(artwork))
         self.vgg_net = self.convolve(self.image)
-        print(self.mean_pixel)
 
     def preprocess(self, image):
-        return (image - self.mean_pixel).astype(np.float32)
-
-    def convertConvolutionalLayerToIndex(self, l):
-        """
-            Given the name of a convolutional layer in VGG-19, return the corresponding index
-            in the pre-trained matconvnet CNN.
-                @param l    Name of a convolutional layer in VGG-19.
-                @return i   The corresponding index in the pre-trained matconvnet CNN.
-        """
-        return architecture.index(l)
+        return (image - self.normalization).astype(np.float32)
 
     def getFiltersFromLayer(self, l):
-        kernels, bias = self.layers[self.convertConvolutionalLayerToIndex(l)][0][0][0][0]
+        kernels, bias = self.layers[VGG19_CNN.architecture.index(l)][0][0][0][0]
         return kernels
 
 
@@ -87,7 +90,7 @@ class VGG19_CNN():
 
         # Default data_format of tf.conv2d is [batchSz, height, width, channels (i.e. colors = 3)]
         feature_maps = dict()
-        conv_input = tf.reshape(image, [1] + image.shape.as_list())
+        conv_input = tf.reshape(image, [1] + image.get_shape().as_list()) # image.shape vs get_shape()
 
         # Convolve image through all layers of the VGG-19 Neural Network
         for i, layer in enumerate(VGG19_CNN.architecture):
@@ -107,77 +110,79 @@ class VGG19_CNN():
 
         return feature_maps
 
+    # Calculation of style loss based on the paper
     def style_loss(self):
         style_input = tf.placeholder('float', shape=self.artwork.shape)
         style_feature_maps = self.convolve(style_input)
 
+        avg_w = 1 / len(STYLING_LAYERS)
         with tf.Session() as sess:
             loss = 0
             for layer in STYLING_LAYERS:
+                style_feature = self.vgg_net[layer]
+                _, height, width, number = style_feature.get_shape().as_list()
+                size = height * width
                 style_gram_matrix = self.compute_gram_matrix(style_feature_maps, style_input, layer)
-                input_gram_matrix = self.compute_gram_matrix_for_layer(layer)
+                input_gram_matrix = self.compute_gram_matrix_for_layer(style_feature)
 
-                loss += STYLE_W * (2 * tf.nn.l2_loss(input_gram_matrix - style_gram_matrix) / style_gram_matrix.size)
+                loss += avg_w * (tf.nn.l2_loss(input_gram_matrix - style_gram_matrix) / (2 * style_gram_matrix.size * (size ** 2)))
 
-        return loss
+        return STYLE_W * loss
 
+    # Helper function to compute the gram matrix of the artwork
     def compute_gram_matrix(self, style_net, artwork_placeholder, layer):
         image_feature = style_net[layer].eval(feed_dict={artwork_placeholder: self.preprocess(self.artwork)})
         image_feature = np.reshape(image_feature, (-1, image_feature.shape[3]))
-        return np.matmul(image_feature.T, image_feature) / image_feature.size
+        return np.matmul(image_feature.T, image_feature)
 
-    def compute_gram_matrix_for_layer(self, layer):
-        image_feature = self.vgg_net[layer]
-        _, height, width, number = map(lambda i: i.value, image_feature.get_shape())
-        size = height * width * number
-        image_feature = tf.reshape(image_feature, (-1, number))
-        return tf.matmul(tf.transpose(image_feature), image_feature) / size
+    # Helper function to compute the gram matrix from the features of the random noise image
+    def compute_gram_matrix_for_layer(self, image_feature):
+        number = image_feature.get_shape()[3]
+        image_feature = tf.reshape(image_feature, (-1, int(image_feature.get_shape().as_list()[3])))
+        return tf.matmul(tf.transpose(image_feature), image_feature)
 
+    # Helper function to save an colored image
     def imsave(self, path, img):
         img = np.clip(img, 0, 255).astype(np.uint8)
         scipy.misc.imsave(path, img)
 
     def reconstruct_content_from_layer(self, l):
-        print("Reconstructing at: " + l)
         content_image = tf.placeholder('float', shape=self.content.shape)
         feature_maps_original = self.convolve(content_image)
 
         # We are performing convolution on x and in Tensorflow
         # tf.nn.conv2d takes in input as [batchSz, height, width, num_channels]
         feature_maps_noise = self.convolve(self.image)
-        scipy.misc.imsave('start.jpg', self.preprocess(self.content))
-
         with tf.Session() as sess:
-            # P (NxM) contains the features of the random noise image in layer l
+            # P (NxM) contains the features of the input image in layer l
             P = feature_maps_original[l].eval(feed_dict = {content_image: self.preprocess(self.content)})
 
-            # F (NxM) contains the features of the image in layer l
+            # F (NxM) contains the features of the random noise image in layer l
             # We use F to construct an image similar in content from a random noise image
             F = feature_maps_noise[l]
 
             # Content Loss
-            content_loss = CONTENT_W * (2 * tf.nn.l2_loss(F-P) / P.size)
+            content_loss = CONTENT_W * (tf.nn.l2_loss(F-P))
 
+            # Style Loss
             style_loss = self.style_loss()
 
+            # Total Loss
             total_loss = content_loss + style_loss
 
             # Training Step
-            train = tf.train.AdamOptimizer(10).minimize(total_loss)
-            tf.summary.FileWriter('./train', sess.graph)
+            train = tf.train.AdamOptimizer(LEARNING_RATE).minimize(total_loss)
+            best_loss = float('inf')
+            best = None
 
             sess.run(tf.global_variables_initializer())
-            for i in range(200):
+            for i in range(1000):
                 train.run()
-                print(i, total_loss.eval(), content_loss.eval(), style_loss.eval())
-                # print(x.eval().shape, self.mean_pixel.shape)
-                t = self.image.eval() + self.mean_pixel
-                self.imsave('subtractPixel.jpg', t)
 
+                print "Iteration: %d -- (style loss) %d + (content loss) %d = %d" % (i, style_loss.eval(), content_loss.eval(), total_loss.eval())
 
-            self.imsave('newfile2.jpg', self.image.eval())
+                t = self.image.eval() + self.normalization
 
-
-
-        print("Finished")
-
+                if best_loss > total_loss.eval():
+                    self.imsave('result.jpg', t)
+                    best_loss = total_loss.eval()
