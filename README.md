@@ -10,5 +10,9 @@ To run:
 
 python main.py <Path to content image> <Path to style image>
 
+Example:
+
+python main.py images/neckarfront3.jpg artwork/gogh.jpg
+
 
 If you run into any issues involving missing packages/modules, you probably have to run pip install <name of package>
