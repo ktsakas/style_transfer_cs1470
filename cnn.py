@@ -5,7 +5,7 @@ import numpy as np
 import imageio
 import os
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 CONTENT_W = 1
 STYLE_W = 100
@@ -57,14 +57,14 @@ class VGG19_CNN():
     def __init__(self, path, content, artwork):
         self.network = scipy.io.loadmat(path)
         self.layers = self.network["layers"][0]
-        self.mean_pixel = np.mean(self.network['normalization'][0][0][0], axis=(0, 1))
+        self.normalization = np.mean(self.network['normalization'][0][0][0], axis=(0, 1))
         self.content = content
         self.artwork = artwork
         self.image = tf.Variable(tf.random_normal(self.content.shape))
         self.vgg_net = self.convolve(self.image)
 
     def preprocess(self, image):
-        return (image - self.mean_pixel).astype(np.float32)
+        return (image - self.normalization).astype(np.float32)
 
     def convolve(self, image):
         """
@@ -155,7 +155,6 @@ class VGG19_CNN():
             for i in range(ITERATIONS):
                 train.run()
                 print("Iteration: %d -- (style loss) %d + (content loss) %d = %d" % (i, style_loss.eval(), content_loss.eval(), total_loss.eval()))
-                # print(x.eval().shape, self.mean_pixel.shape)
-                t = self.image.eval() + self.mean_pixel
+                # print(x.eval().shape, self.normalization.shape)
+                t = self.image.eval() + self.normalization
                 yield t
-
